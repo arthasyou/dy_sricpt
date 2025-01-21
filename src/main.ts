@@ -3,9 +3,9 @@ import * as path from "path";
 import { cpus } from "os";
 
 // 启动多个工作线程，每个线程启动一个浏览器实例
-const numWorkers = cpus().length; // 获取 CPU 核心数
+// const numWorkers = cpus().length; // 获取 CPU 核心数
 
-for (let i = 0; i < numWorkers; i++) {
+for (let i = 0; i < 1; i++) {
   const worker = new ThreadWorker(path.join(__dirname, "worker.ts")); // 引入工作线程文件
 
   worker.on("message", (msg: any) => {

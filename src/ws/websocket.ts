@@ -1,3 +1,5 @@
+import { customEmitter } from "../customEvent";
+
 export class WebSocketService {
   private socket!: WebSocket;
   private reconnectAttempts: number = 0;
@@ -37,6 +39,7 @@ export class WebSocketService {
         const jsonData = JSON.parse(message); // 解析 JSON 字符串
         // 假设 `jsonData` 是解析后的 JSON 对象
         console.log("Received message:", jsonData);
+        customEmitter.emit("sms", jsonData);
 
         // 你可以在这里处理解析后的 `jsonData`
         // 例如调用 protoService 或其他逻辑
