@@ -8,8 +8,6 @@ export class WebSocketService {
   private pendingMessages: { data: object }[] = []; // 暂存待发送的消息队列
   private url: string;
 
-  private pingInterval: NodeJS.Timeout | null = null; // 定时器，用于发送心跳包
-
   constructor(url: string) {
     this.url = url;
     this.connect();
@@ -33,20 +31,20 @@ export class WebSocketService {
       console.log(`Connected to WebSocket server at ${this.url}`);
       this.reconnectAttempts = 0;
       this.flushPendingMessages(); // 重新连接后发送所有暂存的消息
-
-      // 开始定时发送 ping 消息
-      this.startPing();
     };
 
     this.socket.onmessage = (event) => {
       const message = event.data;
       try {
         const jsonData = JSON.parse(message); // 解析 JSON 字符串
-        if (jsonData.type === "ping") {
-          return; // 忽略 ping 消息，直接返回
-        }
+        // 假设 `jsonData` 是解析后的 JSON 对象
         console.log("Received message:", jsonData);
         customEmitter.emit("sms", jsonData);
+
+        // 你可以在这里处理解析后的 `jsonData`
+        // 例如调用 protoService 或其他逻辑
+        // const decodedMessage = protoService.decode(jsonData);
+        // dataManager.updateMessage(decodedMessage.cmd, decodedMessage.data);
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
@@ -55,13 +53,11 @@ export class WebSocketService {
     this.socket.onclose = () => {
       console.log(`Disconnected from WebSocket server at ${this.url}`);
       this.handleReconnect();
-      this.stopPing(); // 停止心跳
     };
 
     this.socket.onerror = (error) => {
       console.error("WebSocket error:", error);
       this.handleReconnect();
-      this.stopPing(); // 停止心跳
     };
   }
 
@@ -81,40 +77,24 @@ export class WebSocketService {
     }
   }
 
-  // 发送 ping 消息以保持连接
-  private startPing() {
-    this.pingInterval = setInterval(() => {
-      if (this.socket.readyState === WebSocket.OPEN) {
-        this.socket.send(JSON.stringify({ type: "ping" })); // 发送 ping 消息
-      }
-    }, 30000); // 每 30 秒发送一次 ping 消息
-  }
-
-  // 停止发送 ping 消息
-  private stopPing() {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval); // 停止 ping 定时器
-      this.pingInterval = null;
-    }
-  }
-
   public send(data: object): boolean {
     if (this.socket.readyState === WebSocket.OPEN) {
-      const jsonData = JSON.stringify(data);
-      this.socket.send(jsonData);
+      const jsonData = JSON.stringify(data); // 将数据转换为 JSON 字符串
+      this.socket.send(jsonData); // 发送 JSON 字符串
       return true;
     } else {
       console.error(
         `WebSocket at ${this.url} is not open. Storing message to send after reconnect.`
       );
-      this.pendingMessages.push({ data });
+      this.pendingMessages.push({ data }); // 暂存消息（不再有 cmd 参数）
       return false;
     }
   }
 
+  // 在重新连接后发送所有暂存的消息
   private flushPendingMessages() {
-    const messages = [...this.pendingMessages];
-    this.pendingMessages = [];
+    const messages = [...this.pendingMessages]; // 复制当前队列
+    this.pendingMessages = []; // 清空原队列
 
     messages.forEach(({ data }) => {
       this.send(data);
@@ -123,6 +103,5 @@ export class WebSocketService {
 
   public close() {
     this.socket.close();
-    this.stopPing(); // 停止心跳
   }
 }
